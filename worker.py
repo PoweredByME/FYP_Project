@@ -9,16 +9,18 @@
     https://eli.thegreenplace.net/2011/12/27/python-threads-communication-and-stopping
 '''
 import os, time, threading;
-from queue import Queue;
-import queue;
+from threadSocket import threadSocket;
+from message import Messenger;
+from Utils.Utils import Print;
 
 class Worker(threading.Thread):
-    def __init__(self, input_queue, output_queue, name = ""):
+    def __init__(self, threadSocket, waitForInput = True, name = ""):
         super(Worker, self).__init__();
-        self._input_queue = input_queue;
-        self._output_queue = output_queue;
+        self._threadSocket = threadSocket;
+        self._messenger = WorkerMessenger(self._threadSocket);
         self._stop_request = threading.Event();
         self._name = name;
+        self._waitForInput = waitForInput;
 
     
     def _isStopRequest(self):
@@ -30,18 +32,34 @@ class Worker(threading.Thread):
             This function checks if the stop request has been made. If
             this is the case then the function ends. This function also
             waits for the _input_queue to get filled. If it is filled 
-            then program wirks on it. Otherwise, it waits for it to get
+            then program works on it. Otherwise, it waits for it to get
             filled and prevents CPU cycles from getting wasted.
         '''
         while not self._isStopRequest():
-            try:
-                task = self._input_queue.get(True, 0.05);
-                print(self._name + ":-> Doing work. Task " + str(task));
-            except queue.Empty:
-                print("No data available");
+            msg = self._messenger.receive(waitForInput = self._waitForInput);
+            if msg == -1:
+                # No data is recieved
                 continue;
+            self._run(msg);
 
-        print(self._name + ":-> Exiting thread");
+        Print("Thread Name = " + self._name + " [Exiting thread]");
+
+    def _run(self, msg):
+        '''
+            This is the function which is to be polymorphed for different
+            child classes.
+
+            This funciton always gets a Message(Object).
+
+            The msg can be None or Message(object).
+        '''
+        if msg is None:
+            Print("message -> None");
+            return;
+        (sender, receiver, dispatchTime, reactionOfMsgAtTime, data, otherData) = msg.unpack();
+        Print(self._name + ":-> Doing work. Task " + str(data));
+        #Print("\n" + str(msg) + "\n");
+            
 
     def join(self, timeout = None):
         self._stop_request.set();
@@ -50,5 +68,26 @@ class Worker(threading.Thread):
     
         
 
+class WorkerMessenger(Messenger):
+    '''
+        Parent class for the messenger of all the 
+        workers / peers
+    '''
+    def __init__(self, ThreadSocket):
+        super(WorkerMessenger, self).__init__(ThreadSocket);
 
-    
+    def send(self, data):
+        import time;
+        msg = Message(
+            sender = ["Worker"],
+            receiver = ["None"],
+            dispatchTime = time.time(),
+            reactionToMsgAtTime = reactionToMsgAtTime,
+            data = data,
+            otherData = None
+        );
+        self._threadSocket.sendOutput(msg);
+
+    def receive(self, waitForInput = True, timeOut = 0.05):
+        return self._threadSocket.receiveInput(waitForInput, timeOut);
+

@@ -1,4 +1,4 @@
-import threading;
+'''import threading;
 import Utils.EEG.EEG.eeg as eeg;
 
 # creating a decorator for threading a function.
@@ -29,3 +29,8 @@ def fftBandStopFilter(fft, freqs, cutOff_lo, cutOff_hi):
 def fftBandPassFilter(fft, freqs, cutOff_lo, cutOff_hi):
     fft = fftLowPassFilter(fft.copy(), freqs, cutOff_hi);
     return fftHightPassFilter(fft, freqs, cutOff_lo);
+'''
+
+def Print(STRING):
+    #STRING = "\n" + STRING + "\n";
+    print(STRING);

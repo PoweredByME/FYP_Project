@@ -1,4 +1,4 @@
-from worker import Worker;
+wfrom worker import Worker;
 from Global import Globals;
 from Utils import Utils;
 from glob;
