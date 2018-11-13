@@ -1,4 +1,4 @@
-'''import threading;
+import threading;
 import Utils.EEG.EEG.eeg as eeg;
 
 # creating a decorator for threading a function.
@@ -8,9 +8,6 @@ def thread(func):
         thread.start();
         return thread;
     return wrapper;
-
-def Print(stringToPrint):
-    print(stringToPrint);
 
 def computeFFT(data, fs):
     return eeg.computeFFT(data, fs);
@@ -29,12 +26,12 @@ def fftBandStopFilter(fft, freqs, cutOff_lo, cutOff_hi):
 def fftBandPassFilter(fft, freqs, cutOff_lo, cutOff_hi):
     fft = fftLowPassFilter(fft.copy(), freqs, cutOff_hi);
     return fftHightPassFilter(fft, freqs, cutOff_lo);
-'''
+
 
 def Print(STRING):
     #STRING = "\n" + STRING + "\n";
     print(STRING);
-
+    
 
 def getComputerIP():
     import socket
@@ -43,3 +40,17 @@ def getComputerIP():
     ip = (s.getsockname()[0]);
     s.close()
     return ip;
+
+def msg2dict(msg):
+    if msg is None:
+        return None;
+    (sender, receiver, dispatchTime, reactionToMsgAtTime, data, otherData) = msg.unpack();
+    x = {
+        "sender" : sender,
+        "receiver" : receiver,
+        "dispatchTime" : dispatchTime,
+        "reactionToMsgAtTime" : reactionToMsgAtTime,
+        "data" : data,
+        "otherData" : otherData
+    };
+    return x;

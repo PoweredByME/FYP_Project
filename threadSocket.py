@@ -9,20 +9,41 @@ class threadSocket(object):
         from queue import Queue;
         self._sendQueue = Queue();
         self._receiveQueue = Queue();
+        self._sqLen = 0;
+        self._rqLen = 0;
         self._name = name
         self._debug = debug;
 
+    def lengths(self):
+        _sendQueueLength = self._sqLen
+        _receiveQueueLength = self._rqLen;
+        return (_sendQueueLength, _receiveQueueLength);
+
+    def getRQL(self):
+        '''
+            Get recieve queue length
+        '''
+        return self._rqLen;
+
+    def getSQL(self):
+        '''
+            Get send queue length
+        '''
+        return self._sqLen;
+        
     def sendOutput(self, msg):
         '''
             SEND DATA INTO THE SEND QUEUE
         '''
         self._sendQueue.put(msg);
+        self._sqLen += 1;
 
     def sendInput(self, msg):
         '''
             SEND DATA INTO THE RECEIVE QUEUE
         '''
         self._receiveQueue.put(msg);
+        self._rqLen += 1;
 
     def receiveInput(self, waitForInput = True, timeOut = 0.05):
         '''
@@ -36,17 +57,19 @@ class threadSocket(object):
         import queue;
         try:
             if waitForInput:
+                self._rqLen -=1 ;
                 return self._receiveQueue.get(waitForInput, timeOut);
             elif self._receiveQueue.empty():
                 return None;
             else:
+                self._rqLen -=1;
                 return self._receiveQueue.get();
         except queue.Empty:
             if not self._debug:
-                return -1;
+                return None;
             from Utils.Utils import Print;
             Print("Socket name = " + self._name + " [Receive Queue : No Data Available for more than "+ str(timeOut) + "sec]");
-            return -1;
+            return None;
 
     def receiveOutput(self, waitForInput = True, timeOut = 0.05):
         '''
@@ -60,17 +83,19 @@ class threadSocket(object):
         import queue;
         try:
             if waitForInput:
+                self._sqLen -= 1;
                 return self._sendQueue.get(waitForInput, timeOut);
             elif self._sendQueue.empty():
                 return None;
             else:
+                self._sqLen -= 1;
                 return self._sendQueue.get();
         except queue.Empty:
             if not self._debug:
-                return -1;
+                return None;
             from Utils.Utils import Print;
             Print("Socket name = " + self._name + " [Send Queue : No Data Available for more than "+ str(timeOut) + "sec]");
-            return -1;
+            return None;
 
     
 

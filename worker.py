@@ -21,8 +21,11 @@ class Worker(threading.Thread):
         self._stop_request = threading.Event();
         self._name = name;
         self._waitForInput = waitForInput;
-
+        self._init_askForData_sent = False;
     
+    def _askServerForData(self):
+        pass;
+
     def _isStopRequest(self):
         # Return true if the self._stop_request has been set.
         return self._stop_request.isSet();
@@ -35,6 +38,9 @@ class Worker(threading.Thread):
             then program works on it. Otherwise, it waits for it to get
             filled and prevents CPU cycles from getting wasted.
         '''
+        if not self._init_askForData_sent:
+            self._askServerForData();
+            self._init_askForData_sent = True;
         while not self._isStopRequest():
             msg = self._messenger.receive(waitForInput = self._waitForInput);
             if msg == -1:

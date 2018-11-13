@@ -7,14 +7,16 @@ from worker import Worker;
 from message import Message, Messenger;
 from threadSocket import threadSocket;
 from dataReader import DataReader;
+from analyser import Analyser;
 import time;
+from Utils import Utils;
+from matplotlib import pyplot as plt;
 
 def SERVER_WORKER_INIT(_threadSocketName, _Messenger, _Worker, threadPool):
     _thread_socket = threadSocket(_threadSocketName);
     _messenger = _Messenger(_thread_socket);
     _worker = _Worker(_thread_socket);
     threadPool.append(_worker);
-
     return (_thread_socket, _messenger, _worker);
 
 def main():
@@ -23,7 +25,7 @@ def main():
 
     #setting up data reader thread
     (dataReaderThreadSocket, dataReaderMessenger, dataReaderWorker) = SERVER_WORKER_INIT("server2dataReader", ServerMessenger, DataReader, threadPool);
-
+    (analyserThreadSocket, analyserMessenger, analyserWorker) = SERVER_WORKER_INIT("server2analyser", ServerMessenger, Analyser, threadPool);
 
     try:
         # make a thread pool which contains all the thread which are to be executed.
@@ -31,20 +33,71 @@ def main():
         for _thread in threadPool:
             _thread.start();
 
-        for i in range(5):
-            time.sleep(0.0001)
-            dataReaderMessenger.send(-2, ["dataReader"]);
-            time.sleep(0.001)
-            msg = dataReaderMessenger.receive();
-            print(msg);
-            #time.sleep(0.000001);
+        analyserHasAskedForData = False;
+        dataReaderServerBuffer = [];
+        while True:
+            '''
+                This loop recieves messages from all of the
+                messengers and 
+            '''
+            dataReaderMSG = dataReaderMessenger.receive();
+            if dataReaderMSG is not None:
+                dataReaderMSG = Utils.msg2dict(dataReaderMSG);
+                dataReaderServerBuffer.append(dataReaderMSG);
+
+            analyserMSG = analyserMessenger.receive();
+            if analyserMSG is not None:
+                analyserMSG = Utils.msg2dict(analyserMSG);
+                if isinstance(analyserMSG["data"], str) and analyserMSG["data"] == "send_data":
+                    analyserHasAskedForData = True;
+                else:
+                    pass;
+                    '''
+                    DATA = analyserMSG["data"];
+                    if DATA["type"] == "fft":
+                        DATA = DATA["data"];
+                    _i = 1;
+                    for item in DATA:
+                        plt.subplot(4,1,_i);
+                        _i += 1;
+                        fAx = item["fAx"];
+                        fAx = fAx[5:40];#len(fAx)];
+                        fftData = item["fftData"];
+                        fftData = fftData[5:40];#fftData.shape[0]];
+                        plt.plot(fAx, fftData);
+                    plt.show();
+                    '''
+            
+            if analyserHasAskedForData:
+                if len(dataReaderServerBuffer) == 0:
+                    dataReaderMSG = None;
+                else:
+                    dataReaderMSG = dataReaderServerBuffer.pop(0);
+            else:
+                dataReaderMSG = None;
+                
+            if dataReaderMSG is not None:
+                if isinstance(dataReaderMSG["data"], str) and dataReaderMSG["data"] == "data_ended":
+                    Utils.Print("Joining all threads");
+                    joinThreads(threadPool);
+                    return;
+                if analyserHasAskedForData:
+                    analyserMessenger.send(dataReaderMSG["data"], ["Analyser"]);
+                    analyserHasAskedForData = False;
+                
+                
+                
+            
+
 
     finally:
         # execute the clean up code.
-        for _thread in threadPool:
-            _thread.join();
+        Utils.Print("Joining all threads");
+        joinThreads(threadPool);
 
-
+def joinThreads(threadList):
+    for _thread in threadList:
+        _thread.join();
 
 
 class ServerMessenger(Messenger):
@@ -70,6 +123,7 @@ class ServerMessenger(Messenger):
     def receive(self, waitForInput = False, timeOut = 0.05):
         return self._threadSocket.receiveOutput(waitForInput, timeOut);
 
+    
     def __str__(self):
         r = "\nServer Messanger. Using Socket :-";
         r += str(self._threadSocket);

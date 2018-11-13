@@ -1,0 +1,9 @@
+setup.py
+EEG/__init__.py
+EEG/eeg.py
+EEG.egg-info/PKG-INFO
+EEG.egg-info/SOURCES.txt
+EEG.egg-info/dependency_links.txt
+EEG.egg-info/not-zip-safe
+EEG.egg-info/requires.txt
+EEG.egg-info/top_level.txt
