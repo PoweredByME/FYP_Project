@@ -12,6 +12,7 @@ import time;
 from Utils import Utils;
 from matplotlib import pyplot as plt;
 from analysisVisualizer import analysisVisualizer;
+from stimulusController import StimulusController;
 
 def SERVER_WORKER_INIT(_threadSocketName, _Messenger, _Worker, threadPool):
     _thread_socket = threadSocket(_threadSocketName);
@@ -20,7 +21,7 @@ def SERVER_WORKER_INIT(_threadSocketName, _Messenger, _Worker, threadPool):
     threadPool.append(_worker);
     return (_thread_socket, _messenger, _worker);
 
-def main():
+'''def main():
     
     threadPool = [];
 
@@ -28,6 +29,7 @@ def main():
     #setting up data reader thread
     (dataReaderThreadSocket, dataReaderMessenger, dataReaderWorker) = SERVER_WORKER_INIT("server2dataReader", ServerMessenger, DataReader, threadPool);
     (analyserThreadSocket, analyserMessenger, analyserWorker) = SERVER_WORKER_INIT("server2analyser", ServerMessenger, Analyser, threadPool);
+    (stimulusControllerThreadSocket, stimulusControllerMessenger, stimulusControllerWorker) = SERVER_WORKER_INIT("server2stimulusController", ServerMessenger, StimulusController, threadPool);
 
     try:
         # make a thread pool which contains all the thread which are to be executed.
@@ -37,12 +39,17 @@ def main():
 
         analyserHasAskedForData = False;
         dataReaderServerBuffer = [];
+        stimulusControllerMSG = stimulusControllerMessenger.receive();
+        stimulusControllerMSG = Utils.msg2dict(stimulusControllerMSG);
+
+        if not stimulusControllerMSG == None and stimulusControllerMSG["data"] == "stimuli_ended":
+            joinThreads(threadPool);
+
         while True:
-            time.sleep(0.5);
-            '''
+            ''
                 This loop recieves messages from all of the
                 messengers and 
-            '''
+            ''
             while True:
                 # get all the messages received by the data reader messenger. 
                 dataReaderMSG = dataReaderMessenger.receive();
@@ -83,9 +90,7 @@ def main():
                 if len(dataReaderServerBuffer) == 0:
                     dataReaderMSG = None;
                 else:
-                    print("he");
                     dataReaderMSG = dataReaderServerBuffer.pop(0);
-                    print("she");
             else:
                 dataReaderMSG = None;
                 
@@ -111,13 +116,14 @@ def main():
 def joinThreads(threadList):
     for _thread in threadList:
         _thread.join();
+'''
 
-
+'''
 class ServerMessenger(Messenger):
-    '''
+    ''
         This messenger only conveys the messages.
         It does not Adapt any message.
-    '''
+    ''
     def __init__(self, ThreadSocket):
         super(ServerMessenger, self).__init__(ThreadSocket);
 
@@ -142,6 +148,101 @@ class ServerMessenger(Messenger):
         r += str(self._threadSocket);
         r += "\n";
         return r;
+
+'''
+
+def makeStimuli():
+    '''
+        This function creates a list of 
+        all the stimuli which are to be presented
+        by the stimulator
+
+        RETURN:
+            ->  list containing the info about each 
+                stimulus. Like, the frequency of the
+                box, text of the box, should the text
+                flicker or not and the time for which
+                stimulus should show up.
+    '''
+
+    stimuli = [];
+    _sw = True;
+    for i in range(20):
+        if _sw:
+            freq = 13; text = "A";
+        else:
+            freq = 15; text = "B";
+        _sw = not _sw;
+        stimuli .append({
+            "freq" : 0,
+            "text" : None,
+            "presistanceTime_sec" : 10,
+            });
+        stimuli .append({
+            "freq" : freq,
+            "text" : text,
+            "presistanceTime_sec" : 5 ,
+            });
+    stimuli .append({
+            "freq" : 0,
+            "text" : None,
+            "presistanceTime_sec" : 10,
+            });
+    return stimuli;
+
+def main():
+    stimuli = makeStimuli();
+    stimCtrl = StimulusController();
+    
+    last_stimulus_timestamp = 0;
+    request_time_interval = (0,0);
+
+    _stim_counter = 1;
+    for stimulus in stimuli:
+        Utils.Print("Showing stimulus -> " + str(_stim_counter) + "/" + str(len(stimuli)) + ". " + str(stimulus));
+        _stim_counter += 1;
+        freq = stimulus["freq"];
+        text = stimulus["text"];
+        presistanceTime_sec = stimulus["presistanceTime_sec"];
+        box = [stimCtrl.makeBox(freq,text)];
+        opts = stimCtrl.makeOptions();
+        if freq == 0:
+            box = [];
+        stimCtrl.sendData(box, opts);
+        _counter = 0;
+        _counter_limit = 400
+        Utils.Print("Waiting for stimulators response");
+        while True:
+            timestamp = stimCtrl.getCurrentStimTimeStamp();
+            if not timestamp == None:
+                break;
+            if _counter > _counter_limit:
+                _counter = 0;
+                Utils.Print("No response for the timestamp of the inittiation of the stimulus. Something is wrong :(");
+                return;
+            _counter += 1;
+            time.sleep(0.1);
+
+        
+        if last_stimulus_timestamp == 0:
+        request_time_interval = (last_stimulus_timestamp, timestamp);
+        last_stimulus_timestamp = timestamp;
+        Utils.Print(request_time_interval);    
+        _current_time_0 = time.time();
+        # request the data chunk. Somehow... :| 
+        # ...... code here
+        # process the data chunk. Somehow... :(
+        # ...... code here
+        time.sleep(1.5);
+        # end of the processing of the data chunk... :)
+        _current_time_1 = time.time();
+        # get how much time remains before showing the
+        # next stimulus and pause the thread for the
+        # remaining time.
+        pauseTime = presistanceTime_sec - (_current_time_1 - _current_time_0);
+        Utils.Print("Pausing the thread for " + str(pauseTime) + " seconds");
+        time.sleep(pauseTime);
+
 
 # Call main function if this script is the main script.
 if __name__ == "__main__":
