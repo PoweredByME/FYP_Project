@@ -32,6 +32,7 @@ class DataReader(Worker):
         '''
         if self._dataEnded:
             self._messenger.send("data_ended", None);
+            self._stop_request.set();
             return;
         if msg is not None:
             # do something if required.

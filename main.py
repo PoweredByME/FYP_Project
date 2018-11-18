@@ -11,6 +11,7 @@ from analyser import Analyser;
 import time;
 from Utils import Utils;
 from matplotlib import pyplot as plt;
+from analysisVisualizer import analysisVisualizer;
 
 def SERVER_WORKER_INIT(_threadSocketName, _Messenger, _Worker, threadPool):
     _thread_socket = threadSocket(_threadSocketName);
@@ -23,6 +24,7 @@ def main():
     
     threadPool = [];
 
+    visualizer = analysisVisualizer();
     #setting up data reader thread
     (dataReaderThreadSocket, dataReaderMessenger, dataReaderWorker) = SERVER_WORKER_INIT("server2dataReader", ServerMessenger, DataReader, threadPool);
     (analyserThreadSocket, analyserMessenger, analyserWorker) = SERVER_WORKER_INIT("server2analyser", ServerMessenger, Analyser, threadPool);
@@ -36,43 +38,54 @@ def main():
         analyserHasAskedForData = False;
         dataReaderServerBuffer = [];
         while True:
+            time.sleep(0.5);
             '''
                 This loop recieves messages from all of the
                 messengers and 
             '''
-            dataReaderMSG = dataReaderMessenger.receive();
-            if dataReaderMSG is not None:
-                dataReaderMSG = Utils.msg2dict(dataReaderMSG);
-                dataReaderServerBuffer.append(dataReaderMSG);
+            while True:
+                # get all the messages received by the data reader messenger. 
+                dataReaderMSG = dataReaderMessenger.receive();
+                if dataReaderMSG is not None:
+                    dataReaderMSG = Utils.msg2dict(dataReaderMSG);
+                    dataReaderServerBuffer.append(dataReaderMSG);
+                else:
+                    break;
 
+            
             analyserMSG = analyserMessenger.receive();
             if analyserMSG is not None:
                 analyserMSG = Utils.msg2dict(analyserMSG);
                 if isinstance(analyserMSG["data"], str) and analyserMSG["data"] == "send_data":
                     analyserHasAskedForData = True;
                 else:
-                    pass;
-                    '''
                     DATA = analyserMSG["data"];
                     if DATA["type"] == "fft":
+                        target_ssvep = DATA["target_ssvep"];
                         DATA = DATA["data"];
-                    _i = 1;
-                    for item in DATA:
-                        plt.subplot(4,1,_i);
-                        _i += 1;
-                        fAx = item["fAx"];
-                        fAx = fAx[5:40];#len(fAx)];
-                        fftData = item["fftData"];
-                        fftData = fftData[5:40];#fftData.shape[0]];
-                        plt.plot(fAx, fftData);
-                    plt.show();
-                    '''
+                        freq_13 = [];
+                        freq_15 = [];
+                        for _item in DATA:
+                            freq_13.append(_item["fftData"][13][0]);
+                            freq_15.append(_item["fftData"][15][0]);
+
+                        for _item in DATA:
+                            freq_13.append(_item["fftData"][26][0]);
+                            freq_15.append(_item["fftData"][30][0]);
+                        Utils.Print("=" * 20);
+                        Utils.Print("Target Frequency : " + str(target_ssvep));
+                        Utils.Print("freq_13 -> " + str(freq_13));
+                        Utils.Print("freq_15 -> " + str(freq_15));
+                        Utils.Print("=" * 20);
+                        #visualizer.SET_DATA__fft_plot_for_4_channel_data(DATA);
             
             if analyserHasAskedForData:
                 if len(dataReaderServerBuffer) == 0:
                     dataReaderMSG = None;
                 else:
+                    print("he");
                     dataReaderMSG = dataReaderServerBuffer.pop(0);
+                    print("she");
             else:
                 dataReaderMSG = None;
                 
